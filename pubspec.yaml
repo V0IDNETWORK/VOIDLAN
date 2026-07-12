@@ -1,0 +1,54 @@
+name: void_lan
+description: "VOID LAN — offline-first LAN discovery, file transfer, and messenger."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management / navigation
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.0
+
+  # Networking / LAN
+  network_info_plus: ^6.0.1
+  connectivity_plus: ^6.0.5
+  device_info_plus: ^10.1.2
+
+  # Files / desktop interaction
+  file_picker: ^8.0.6
+  desktop_drop: ^0.4.4
+  path_provider: ^2.1.4
+  share_plus: ^9.0.0
+  url_launcher: ^6.3.0
+
+  # Security / storage
+  flutter_secure_storage: ^9.2.2
+  crypto: ^3.0.3
+
+  # System / permissions
+  # permission_handler: ^12.0.1
+  local_notifier: ^0.1.6
+  window_manager: ^0.4.2
+
+  # Utilities
+  logger: ^2.4.0
+  uuid: ^4.4.2
+  path: ^1.9.0
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.8
+  flutter_animate: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  # uses-material-design: true
+  # assets:
+  #   - assets/icons/
