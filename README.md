@@ -101,23 +101,47 @@ bytes never touch UDP.
   the discovery/pairing handshake); plain hosts on the network show
   their IP address as the display name since reverse DNS isn't
   reliably available cross-platform without a native dependency.
-* **Voice messages** and **background transfer notifications** have
-  their data-layer hooks in place (`MessageType.voice`,
-  `local_notifier` dependency) but the recording UI and notification
-  wiring are left as the next increment — flagging this rather than
-  shipping a stub that silently does nothing.
+* **Voice messages** are fully wired: `VoiceRecorderService` records
+  AAC audio, sends it through the same confirmation-gated file-transfer
+  path as any other attachment, and `VoiceMessageContent` plays it back
+  (immediately for the sender via its local temp file, or once the
+  receiver has accepted the transfer). Recording is toggle-to-record,
+  not press-and-hold — a deliberate simplification that works
+  identically on desktop and mobile without gesture-detector edge
+  cases.
+* **Notifications** are wired cross-platform: `flutter_local_notifications`
+  on Android, `local_notifier` on Windows/Linux/macOS, both fired from
+  incoming chat messages and completed transfers.
+* **Background transfer while the app is fully backgrounded/killed on
+  Android** would need a foreground service wrapping the transfer
+  socket loop; the manifest already declares the
+  `FOREGROUND_SERVICE_DATA_SYNC` permission for this, but the service
+  itself isn't wired up yet — flagging this rather than shipping a
+  permission that silently does nothing.
 
 ## Package choices
 
 Every package in `pubspec.yaml` is stable and actively maintained as of
-early 2026. `multicast_dns` and `bitsdojo_window` were deliberately
-**left out**: real RFC 6762 mDNS advertisement needs a full responder
-implementation that `multicast_dns` (a query-only client) doesn't
-provide — the custom UDP discovery/responder protocol above already
-satisfies "auto-advertise, auto-discover" without a half-fit
-dependency. `bitsdojo_window` and `window_manager` both take ownership
-of native window chrome and conflict if both are wired up; this
-project uses `window_manager` alone.
+early 2026. A few deliberate deviations from a literal reading of the
+brief, each reasoned through rather than defaulted into:
+
+* **`multicast_dns` and `bitsdojo_window` were left out.** Real RFC
+  6762 mDNS advertisement needs a full responder implementation that
+  `multicast_dns` (a query-only client) doesn't provide — the custom
+  UDP discovery/responder protocol in `LanDiscoveryService` already
+  satisfies "auto-advertise, auto-discover" without a half-fit
+  dependency. `bitsdojo_window` and `window_manager` both take
+  ownership of native window chrome and conflict if both are wired up;
+  this project uses `window_manager` alone.
+* **`flutter_local_notifications` is pinned to `^17.x`, not latest.**
+  The package has moved fast (Windows/Linux toast support, new
+  per-platform initialization types); pinning to the 17.x line keeps
+  the app on the long-stable core `initialize()`/`show()` surface used
+  here rather than chasing a newer major version's API churn.
+* **`record` + `audioplayers`** were added (not in the original
+  preferred list) to actually implement voice messages rather than
+  leave `MessageType.voice` as dead code — both have had a stable core
+  API for a long time.
 
 ## License
 

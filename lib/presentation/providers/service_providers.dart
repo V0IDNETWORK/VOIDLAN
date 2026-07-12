@@ -9,6 +9,7 @@ import '../../data/services/local_server_service.dart';
 import '../../data/services/messenger_service.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/pairing_service.dart';
+import '../../data/services/voice_recorder_service.dart';
 
 /// Shared [Logger] instance used across the data layer.
 final loggerProvider = Provider<Logger>((ref) => Logger(
@@ -59,6 +60,12 @@ final pairingServiceProvider = Provider<PairingService?>((ref) {
 
 final notificationServiceProvider =
     Provider<NotificationService>((ref) => NotificationService());
+
+final voiceRecorderServiceProvider = Provider<VoiceRecorderService>((ref) {
+  final service = VoiceRecorderService();
+  ref.onDispose(service.dispose);
+  return service;
+});
 
 final messengerServiceProvider = Provider<MessengerService?>((ref) {
   final identity = ref.watch(deviceIdentityProvider).valueOrNull;

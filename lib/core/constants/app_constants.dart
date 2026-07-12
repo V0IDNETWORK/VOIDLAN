@@ -38,4 +38,8 @@ class AppConstants {
   // --- Storage keys --------------------------------------------------------
   static const String secureKeyDeviceId = 'void_lan_device_id';
   static const String secureKeyPairingSecret = 'void_lan_pairing_secret';
+
+  /// Subfolder of the app's documents directory that received files
+  /// (including voice messages) are saved into.
+  static const String receivedFilesDirName = 'VoidLanReceived';
 }

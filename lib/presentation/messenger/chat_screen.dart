@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
 import '../../data/models/chat_message_model.dart';
 import '../providers/messenger_providers.dart';
@@ -33,6 +34,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _searchController = TextEditingController();
   ChatMessageModel? _replyTarget;
   bool _searching = false;
+  bool _isRecording = false;
 
   @override
   void dispose() {
@@ -40,6 +42,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleRecording() async {
+    final recorder = ref.read(voiceRecorderServiceProvider);
+    if (_isRecording) {
+      final file = await recorder.stop();
+      setState(() => _isRecording = false);
+      if (file == null) return;
+      final fileName = p.basename(file.path);
+      final fileSize = await file.length();
+      ref.read(fileTransferServiceProvider).sendFile(
+            peerIp: widget.peerIp,
+            file: file,
+            peerName: widget.peerName,
+          );
+      ref.read(messengerServiceProvider)?.sendVoice(
+            peerId: widget.peerId,
+            peerIp: widget.peerIp,
+            fileName: fileName,
+            fileSizeBytes: fileSize,
+            localFilePath: file.path,
+          );
+      return;
+    }
+    try {
+      await recorder.start();
+      setState(() => _isRecording = true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start recording: $e')),
+        );
+      }
+    }
   }
 
   void _send() {
@@ -131,6 +167,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             controller: _textController,
             onChanged: _onTyping,
             onSend: _send,
+            isRecording: _isRecording,
+            onMicPressed: _toggleRecording,
           ),
         ],
       ),
@@ -180,11 +218,19 @@ class _ReplyPreview extends StatelessWidget {
 }
 
 class _Composer extends StatelessWidget {
-  const _Composer({required this.controller, required this.onChanged, required this.onSend});
+  const _Composer({
+    required this.controller,
+    required this.onChanged,
+    required this.onSend,
+    required this.isRecording,
+    required this.onMicPressed,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
+  final bool isRecording;
+  final VoidCallback onMicPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -194,33 +240,57 @@ class _Composer extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  for (final emoji in _quickEmoji)
-                    IconButton(
-                      onPressed: () => controller.text += emoji,
-                      icon: Text(emoji, style: const TextStyle(fontSize: 18)),
-                    ),
-                ],
+            if (isRecording)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fiber_manual_record, size: 14, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 6),
+                    const Text('Recording voice message…'),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                height: 36,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final emoji in _quickEmoji)
+                      IconButton(
+                        onPressed: () => controller.text += emoji,
+                        icon: Text(emoji, style: const TextStyle(fontSize: 18)),
+                      ),
+                  ],
+                ),
               ),
-            ),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: controller,
                     onChanged: onChanged,
+                    enabled: !isRecording,
                     minLines: 1,
                     maxLines: 4,
-                    decoration: const InputDecoration(hintText: 'Message…'),
+                    decoration: InputDecoration(
+                      hintText: isRecording ? 'Recording…' : 'Message…',
+                    ),
                     onSubmitted: (_) => onSend(),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(icon: const Icon(Icons.send), onPressed: onSend),
+                IconButton.filled(
+                  onPressed: onMicPressed,
+                  icon: Icon(isRecording ? Icons.stop : Icons.mic_none),
+                  style: isRecording
+                      ? IconButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error)
+                      : null,
+                ),
+                const SizedBox(width: 4),
+                IconButton.filled(icon: const Icon(Icons.send), onPressed: isRecording ? null : onSend),
               ],
             ),
           ],

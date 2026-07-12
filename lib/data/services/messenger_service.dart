@@ -122,6 +122,39 @@ class MessengerService {
     return message;
   }
 
+  Future<ChatMessageModel> sendVoice({
+    required String peerId,
+    required String peerIp,
+    required String fileName,
+    required int fileSizeBytes,
+    String? localFilePath,
+  }) async {
+    final conversationId = conversationIdFor(peerId);
+    final message = ChatMessageModel(
+      id: _uuid.v4(),
+      conversationId: conversationId,
+      senderId: localDeviceId,
+      isOutgoing: true,
+      type: MessageType.voice,
+      timestamp: DateTime.now(),
+      fileName: fileName,
+      fileSizeBytes: fileSizeBytes,
+      filePath: localFilePath,
+      status: MessageStatus.sending,
+    );
+
+    _appendLocal(message);
+
+    final conn = await _connections.connectTo(peerIp);
+    if (conn != null) {
+      conn.send({'type': 'chat', ...message.toJson()});
+      _updateStatus(message, MessageStatus.sent);
+    } else {
+      _updateStatus(message, MessageStatus.failed);
+    }
+    return message;
+  }
+
   void sendTyping(String peerIp) {
     final conn = _connections.connectionFor(peerIp);
     conn?.send({'type': 'typing', 'senderId': localDeviceId});

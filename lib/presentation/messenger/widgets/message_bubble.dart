@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../data/models/chat_message_model.dart';
+import 'voice_message_content.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -67,13 +68,13 @@ class MessageBubble extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Icon(Icons.push_pin, size: 12, color: textColor.withOpacity(0.7)),
                 ),
-              Text(
-                message.isDeleted ? 'Message deleted' : (message.text ?? ''),
-                style: TextStyle(
-                  color: textColor,
-                  fontStyle: message.isDeleted ? FontStyle.italic : FontStyle.normal,
-                ),
-              ),
+              if (message.isDeleted)
+                Text('Message deleted',
+                    style: TextStyle(color: textColor, fontStyle: FontStyle.italic))
+              else if (message.type == MessageType.voice)
+                VoiceMessageContent(message: message, textColor: textColor)
+              else
+                Text(message.text ?? '', style: TextStyle(color: textColor)),
               const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,

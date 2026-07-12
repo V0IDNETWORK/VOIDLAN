@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/constants/app_constants.dart';
 import 'connection_manager.dart';
 import 'file_transfer_service.dart';
 import 'lan_discovery_service.dart';
@@ -50,7 +51,7 @@ class LocalServerService {
 
   Future<String> _resolveDownloadsDir() async {
     final dir = await getApplicationDocumentsDirectory();
-    final path = '${dir.path}/VoidLanReceived';
+    final path = '${dir.path}/${AppConstants.receivedFilesDirName}';
     final receivedDir = Directory(path);
     if (!await receivedDir.exists()) {
       await receivedDir.create(recursive: true);
