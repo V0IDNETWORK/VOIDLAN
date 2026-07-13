@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -46,58 +47,52 @@ class LinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 260 + (index * 40)),
-      curve: Curves.easeOutCubic,
-      builder: (context, t, child) => Opacity(
-        opacity: t,
-        child: Transform.translate(offset: Offset(0, (1 - t) * 12), child: child),
-      ),
-      child: Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: _open,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: theme.colorScheme.primary.withOpacity(0.14),
-                  child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: _open,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.14),
+                child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      _isEmail ? value.replaceFirst('mailto:', '') : value,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                      Text(
-                        _isEmail ? value.replaceFirst('mailto:', '') : value,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.6)),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Copy',
-                  icon: const Icon(Icons.copy_outlined, size: 18),
-                  onPressed: () => _copy(context),
-                ),
-                IconButton(
-                  tooltip: 'Share',
-                  icon: const Icon(Icons.share_outlined, size: 18),
-                  onPressed: _share,
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                tooltip: 'Copy',
+                icon: const Icon(Icons.copy_outlined, size: 18),
+                onPressed: () => _copy(context),
+              ),
+              IconButton(
+                tooltip: 'Share',
+                icon: const Icon(Icons.share_outlined, size: 18),
+                onPressed: _share,
+              ),
+            ],
           ),
         ),
       ),
-    );
+    )
+        .animate(delay: Duration(milliseconds: index * 40))
+        .fadeIn(duration: 260.ms, curve: Curves.easeOutCubic)
+        .slideY(begin: 0.12, end: 0, duration: 260.ms, curve: Curves.easeOutCubic);
   }
 }

@@ -6,6 +6,7 @@ import '../../presentation/lan_explorer/lan_explorer_screen.dart';
 import '../../presentation/lan_explorer/widgets/device_details_screen.dart';
 import '../../presentation/messenger/chat_screen.dart';
 import '../../presentation/messenger/messenger_screen.dart';
+import '../../presentation/settings/settings_screen.dart';
 import '../../presentation/shell/main_shell.dart';
 
 /// Route paths, centralized so screens navigate via constants instead
@@ -18,6 +19,7 @@ class AppRoutes {
   static const about = '/about';
   static const messenger = '/messenger';
   static const chat = 'chat';
+  static const settings = '/settings';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -83,6 +85,11 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: AppRoutes.settings,
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) => const SettingsScreen(),
     ),
   ],
 );

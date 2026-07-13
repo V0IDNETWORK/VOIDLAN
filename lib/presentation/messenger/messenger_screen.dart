@@ -7,6 +7,7 @@ import '../../data/models/device_model.dart';
 import '../providers/messenger_providers.dart';
 import '../providers/network_providers.dart';
 import '../providers/service_providers.dart';
+import '../shared/glass_app_bar.dart';
 import 'widgets/conversation_tile.dart';
 
 /// Tab 3 — offline local messenger. Lists existing conversations and
@@ -22,7 +23,7 @@ class MessengerScreen extends ConsumerWidget {
         ref.watch(deviceListProvider).where((d) => d.isVoidLanPeer).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Messenger')),
+      appBar: GlassAppBar(title: const Text('Messenger')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showNearbyPeers(context, ref, peers),
         icon: const Icon(Icons.person_add_alt_1),

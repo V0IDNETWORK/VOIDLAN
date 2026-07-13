@@ -5,7 +5,9 @@ import 'package:path/path.dart' as p;
 import '../../data/models/chat_message_model.dart';
 import '../providers/messenger_providers.dart';
 import '../providers/service_providers.dart';
+import '../shared/glass_app_bar.dart';
 import 'widgets/message_bubble.dart';
+import 'widgets/recording_indicator.dart';
 
 const _quickEmoji = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '😢', '🙏'];
 
@@ -35,6 +37,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   ChatMessageModel? _replyTarget;
   bool _searching = false;
   bool _isRecording = false;
+  bool _isPaused = false;
 
   @override
   void dispose() {
@@ -48,7 +51,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final recorder = ref.read(voiceRecorderServiceProvider);
     if (_isRecording) {
       final file = await recorder.stop();
-      setState(() => _isRecording = false);
+      setState(() {
+        _isRecording = false;
+        _isPaused = false;
+      });
       if (file == null) return;
       final fileName = p.basename(file.path);
       final fileSize = await file.length();
@@ -76,6 +82,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
     }
+  }
+
+  Future<void> _togglePause() async {
+    final recorder = ref.read(voiceRecorderServiceProvider);
+    if (_isPaused) {
+      await recorder.resume();
+    } else {
+      await recorder.pause();
+    }
+    setState(() => _isPaused = !_isPaused);
+  }
+
+  Future<void> _cancelRecording() async {
+    await ref.read(voiceRecorderServiceProvider).cancel();
+    setState(() {
+      _isRecording = false;
+      _isPaused = false;
+    });
   }
 
   void _send() {
@@ -114,7 +138,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         : messages;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: _searching
             ? TextField(
                 controller: _searchController,
@@ -168,7 +192,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onChanged: _onTyping,
             onSend: _send,
             isRecording: _isRecording,
+            isPaused: _isPaused,
             onMicPressed: _toggleRecording,
+            onPausePressed: _togglePause,
+            onCancelPressed: _cancelRecording,
           ),
         ],
       ),
@@ -217,23 +244,29 @@ class _ReplyPreview extends StatelessWidget {
   }
 }
 
-class _Composer extends StatelessWidget {
+class _Composer extends ConsumerWidget {
   const _Composer({
     required this.controller,
     required this.onChanged,
     required this.onSend,
     required this.isRecording,
+    required this.isPaused,
     required this.onMicPressed,
+    required this.onPausePressed,
+    required this.onCancelPressed,
   });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
   final bool isRecording;
+  final bool isPaused;
   final VoidCallback onMicPressed;
+  final VoidCallback onPausePressed;
+  final VoidCallback onCancelPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -244,11 +277,21 @@ class _Composer extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.fiber_manual_record, size: 14, color: Theme.of(context).colorScheme.error),
-                    const SizedBox(width: 6),
-                    const Text('Recording voice message…'),
+                    Expanded(
+                      child: RecordingIndicator(
+                        recorder: ref.watch(voiceRecorderServiceProvider),
+                        isPaused: isPaused,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: onPausePressed,
+                      icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
+                    ),
+                    IconButton(
+                      onPressed: onCancelPressed,
+                      icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+                    ),
                   ],
                 ),
               )

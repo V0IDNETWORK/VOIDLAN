@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/device_model.dart';
@@ -68,7 +69,18 @@ class DeviceTile extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: theme.cardColor, width: 2),
                       ),
-                    ),
+                    )
+                        .animate(
+                          onPlay: (controller) => device.status == DeviceStatus.online
+                              ? controller.repeat(reverse: true)
+                              : null,
+                        )
+                        .scaleXY(
+                          begin: 1,
+                          end: device.status == DeviceStatus.online ? 1.3 : 1,
+                          duration: 900.ms,
+                          curve: Curves.easeInOut,
+                        ),
                   ),
                 ],
               ),
@@ -102,6 +114,6 @@ class DeviceTile extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 220.ms).slideX(begin: 0.04, end: 0, duration: 220.ms);
   }
 }

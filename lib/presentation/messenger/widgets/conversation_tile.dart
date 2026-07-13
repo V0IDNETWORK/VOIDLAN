@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
 import '../../../data/models/chat_message_model.dart';
@@ -76,6 +77,6 @@ class ConversationTile extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 220.ms).slideX(begin: 0.04, end: 0, duration: 220.ms);
   }
 }

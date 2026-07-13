@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
 import '../../../data/models/chat_message_model.dart';
@@ -91,7 +92,10 @@ class MessageBubble extends StatelessWidget {
           ),
         ),
       ),
-    );
+    )
+        .animate()
+        .fadeIn(duration: 200.ms)
+        .slideX(begin: isOut ? 0.08 : -0.08, end: 0, duration: 200.ms, curve: Curves.easeOut);
   }
 
   void _showActions(BuildContext context) {

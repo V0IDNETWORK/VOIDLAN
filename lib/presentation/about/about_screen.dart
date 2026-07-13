@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../shared/glass_app_bar.dart';
 import 'widgets/link_card.dart';
 
 class _LinkEntry {
@@ -33,7 +35,7 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('About')),
+      appBar: GlassAppBar(title: const Text('About')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -46,7 +48,10 @@ class AboutScreen extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.hub_outlined, size: 48, color: Colors.white),
-            ),
+            )
+                .animate()
+                .fadeIn(duration: 400.ms)
+                .scaleXY(begin: 0.85, end: 1, duration: 400.ms, curve: Curves.easeOutBack),
           ),
           const SizedBox(height: 16),
           Center(

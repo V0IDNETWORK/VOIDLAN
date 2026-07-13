@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/chat_message_model.dart';
+import 'waveform_bars.dart';
 
 /// Renders a play/pause control for a voice message bubble.
 ///
@@ -31,6 +33,14 @@ class _VoiceMessageContentState extends State<VoiceMessageContent> {
   PlayerState _state = PlayerState.stopped;
   String? _resolvedPath;
   bool _resolving = true;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+  late final List<double> _levels = _generateLevels(widget.message.id);
+
+  static List<double> _generateLevels(String seed) {
+    final random = Random(seed.hashCode);
+    return List.generate(32, (_) => 0.15 + random.nextDouble() * 0.85);
+  }
 
   @override
   void initState() {
@@ -38,6 +48,15 @@ class _VoiceMessageContentState extends State<VoiceMessageContent> {
     _resolvePath();
     _player.onPlayerStateChanged.listen((state) {
       if (mounted) setState(() => _state = state);
+    });
+    _player.onPositionChanged.listen((position) {
+      if (mounted) setState(() => _position = position);
+    });
+    _player.onDurationChanged.listen((duration) {
+      if (mounted) setState(() => _duration = duration);
+    });
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _position = Duration.zero);
     });
   }
 
@@ -122,8 +141,26 @@ class _VoiceMessageContentState extends State<VoiceMessageContent> {
           onPressed: _toggle,
         ),
         const SizedBox(width: 8),
-        Text('Voice message', style: TextStyle(color: widget.textColor)),
+        WaveformBars(
+          levels: _levels,
+          color: widget.textColor.withOpacity(0.35),
+          activeColor: widget.textColor,
+          progress: _duration.inMilliseconds == 0
+              ? 0
+              : _position.inMilliseconds / _duration.inMilliseconds,
+          height: 26,
+          barWidth: 2.5,
+        ),
+        const SizedBox(width: 8),
+        Text(_formatDuration(_duration - _position), style: TextStyle(color: widget.textColor, fontSize: 11)),
       ],
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    final safe = duration.isNegative ? Duration.zero : duration;
+    final minutes = safe.inMinutes.toString().padLeft(2, '0');
+    final seconds = (safe.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 }

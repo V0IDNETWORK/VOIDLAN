@@ -13,6 +13,7 @@ import '../../providers/network_providers.dart';
 import '../../providers/pairing_providers.dart';
 import '../../providers/service_providers.dart';
 import '../../providers/transfer_providers.dart';
+import '../../shared/glass_app_bar.dart';
 
 /// Full detail view for a single device: identity, live ping, shared
 /// services, and the send/receive transfer UI (including desktop
@@ -90,7 +91,7 @@ class _DeviceDetailsScreenState extends ConsumerState<DeviceDetailsScreen> {
     final isPaired = device.deviceId != null && pairedPeers.contains(device.deviceId);
 
     return Scaffold(
-      appBar: AppBar(title: Text(device.displayName)),
+      appBar: GlassAppBar(title: Text(device.displayName)),
       body: DropTarget(
         onDragDone: (details) => _sendFiles(
             device, details.files.map((f) => f.path).toList()),

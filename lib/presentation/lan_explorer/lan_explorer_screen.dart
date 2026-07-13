@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,9 +9,11 @@ import '../providers/network_providers.dart';
 import '../providers/pairing_providers.dart';
 import '../providers/service_providers.dart';
 import '../providers/transfer_providers.dart';
+import '../shared/glass_app_bar.dart';
 import 'widgets/device_tile.dart';
 import 'widgets/incoming_transfer_dialog.dart';
 import 'widgets/pairing_request_dialog.dart';
+import 'widgets/radar_sweep.dart';
 
 /// Tab 1 — the app's primary screen. Kicks off the local server, runs
 /// LAN scans, and lists every discovered device with live status.
@@ -66,19 +69,17 @@ class _LanExplorerScreenState extends ConsumerState<LanExplorerScreen> {
     });
 
     if (bootState.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: _BootSplash());
     }
-    if (bootState.hasError && !_requestedInitialScan) {
-      // Server failed to bind (e.g. port already in use); scanning still
-      // works, it just means this device won't be discoverable by others.
-    }
-    if (bootState.hasValue && !_requestedInitialScan) {
-      _requestedInitialScan = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _runScan());
+    if (bootState.hasValue || bootState.hasError) {
+      if (!_requestedInitialScan) {
+        _requestedInitialScan = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _runScan());
+      }
     }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: const Text('LAN Explorer'),
         actions: [
           IconButton(
@@ -105,11 +106,27 @@ class _LanExplorerScreenState extends ConsumerState<LanExplorerScreen> {
               PopupMenuItem(value: DeviceSortMode.status, child: Text('Status')),
             ],
           ),
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Settings',
+            onPressed: () => context.push(AppRoutes.settings),
+            icon: const Icon(Icons.settings_outlined),
+          ),
           const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
+          if (bootState.hasError)
+            Container(
+              width: double.infinity,
+              color: Theme.of(context).colorScheme.errorContainer,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                'Local server could not start — this device won\'t be discoverable, but scanning still works.',
+                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+              ),
+            ),
           Consumer(
             builder: (context, ref, _) {
               final hasLan = ref.watch(hasLanConnectionProvider).valueOrNull ?? true;
@@ -162,6 +179,34 @@ class _LanExplorerScreenState extends ConsumerState<LanExplorerScreen> {
   }
 }
 
+class _BootSplash extends StatelessWidget {
+  const _BootSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [Color(0xFF7B2FFF), Color(0xFF00E5FF)],
+            ).createShader(bounds),
+            child: const Icon(Icons.hub_outlined, size: 64, color: Colors.white),
+          ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(
+                begin: 0.92,
+                end: 1.06,
+                duration: 1100.ms,
+                curve: Curves.easeInOut,
+              ),
+          const SizedBox(height: 20),
+          Text('Starting VOID LAN…', style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.isScanning, required this.onScan});
 
@@ -174,8 +219,14 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_tethering, size: 56,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              RadarSweep(active: isScanning),
+              Icon(Icons.wifi_tethering, size: 40,
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.6)),
+            ],
+          ),
           const SizedBox(height: 16),
           Text(isScanning ? 'Scanning your network…' : 'No devices found yet',
               style: Theme.of(context).textTheme.titleMedium),

@@ -18,8 +18,28 @@ class VoiceRecorderService {
   DateTime? _startedAt;
 
   bool get isRecording => _currentPath != null;
+  bool _paused = false;
+  bool get isPaused => _paused;
 
   Future<bool> hasPermission() => _recorder.hasPermission();
+
+  Future<void> pause() async {
+    if (!isRecording || _paused) return;
+    await _recorder.pause();
+    _paused = true;
+  }
+
+  Future<void> resume() async {
+    if (!isRecording || !_paused) return;
+    await _recorder.resume();
+    _paused = false;
+  }
+
+  /// Live input level, updated every [interval]. Values are raw dBFS
+  /// (typically -45..0 for voice); the waveform widget normalizes them.
+  Stream<Amplitude> amplitudeStream({Duration interval = const Duration(milliseconds: 100)}) {
+    return _recorder.onAmplitudeChanged(interval);
+  }
 
   /// Starts recording to a fresh temp file. Throws a [StateError] if a
   /// recording is already in progress.
@@ -40,6 +60,7 @@ class VoiceRecorderService {
     );
     _currentPath = path;
     _startedAt = DateTime.now();
+    _paused = false;
   }
 
   /// Stops the current recording and returns the resulting file, or
@@ -51,6 +72,7 @@ class VoiceRecorderService {
     final startedAt = _startedAt;
     _currentPath = null;
     _startedAt = null;
+    _paused = false;
 
     if (path == null) return null;
     final file = File(path);
@@ -69,6 +91,7 @@ class VoiceRecorderService {
     final path = await _recorder.stop();
     _currentPath = null;
     _startedAt = null;
+    _paused = false;
     if (path != null) {
       final file = File(path);
       if (await file.exists()) await file.delete();

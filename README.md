@@ -6,6 +6,15 @@ Internet connection. Built with Flutter, Riverpod, GoRouter, and
 Clean Architecture / MVVM. Primary targets are **Windows** and
 **Android**; **Linux** is supported as a secondary desktop target.
 
+## What's new in this pass
+
+* **Settings screen** (`/settings`, pushed from the LAN Explorer app bar) — theme selection (system/light/dark) and build info. Kept out of the tab bar since the original spec fixes the app at exactly three tabs.
+* **Glassmorphism app bars** (`GlassAppBar`) — a `BackdropFilter` blur + gradient tint, built from stock Flutter widgets, applied to all five screens. No image assets anywhere in the project; every visual is Material icons, gradients, or `CustomPainter`.
+* **Radar-sweep scan animation** (`RadarSweep`, `CustomPainter`) replaces the plain spinner in LAN Explorer's empty/scanning state.
+* **Voice messages now have pause/cancel and a real waveform**: `VoiceRecorderService` exposes `pause()`/`resume()`/`amplitudeStream()`; `RecordingIndicator` renders the live input level while recording; `VoiceMessageContent` renders a seeded per-message waveform during playback with a progress sweep synced to `audioplayers`' position/duration streams.
+* **Entrance animations** (`flutter_animate`, actually wired up — previously declared but unused) on device tiles, conversation tiles, message bubbles, and About links.
+* Removed the unused `assets/` folder and `cupertino_icons` dependency — nothing in the app depends on bundled image assets or iOS-style icons.
+
 ## Getting the project running
 
 The `lib/`, `pubspec.yaml`, and `android/` folders in this project are
@@ -31,7 +40,39 @@ flutter run -d <deviceid> # Android
 
 Android requires `minSdk 24+`; the manifest already declares every
 permission the app needs (Wi-Fi state, nearby-device discovery,
-storage, notifications, foreground service for background transfers).
+storage, microphone, notifications, foreground service for background
+transfers).
+
+## Verification status — read this before assuming a clean build
+
+This project was written and reviewed in a sandbox with **no Flutter,
+Android, or Windows toolchain and no network access** — there is no
+way to actually run `flutter pub get`, `flutter analyze`, `flutter
+test`, `flutter build apk`, or `flutter build windows` here, and
+claiming those passed without running them would be misleading. What
+was done instead, and should be treated as a strong first draft rather
+than a guaranteed-clean build:
+
+* Every `package:` import across `lib/` was cross-checked against
+  `pubspec.yaml` by hand (no missing or stray dependencies).
+* Every route string constructed with `context.go`/`context.push` was
+  matched against the corresponding `GoRoute` path in `app_router.dart`.
+* Every third-party API call (`record`, `audioplayers`,
+  `flutter_local_notifications`, `window_manager`, `desktop_drop`,
+  `file_picker`, `device_info_plus`, etc.) was written against the API
+  surface of the specific version pinned in `pubspec.yaml`, favoring
+  long-stable versions over "latest" where a package has churned its
+  API recently (see "Package choices" below).
+* One real bug was caught and fixed during review: the original file
+  transfer handshake tried to `listen` twice on the same inbound
+  socket, which `dart:io` sockets don't allow — it's now a single
+  subscription that demultiplexes the header frame from the raw byte
+  stream that follows it.
+
+Please run the five commands above yourself after `flutter create`;
+if `flutter analyze` surfaces anything, it's most likely a minor typo
+or a version-specific API mismatch in one of the third-party plugin
+calls, not a structural problem with the architecture.
 
 ## Architecture
 

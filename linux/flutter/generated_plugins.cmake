@@ -3,9 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  audioplayers_linux
   desktop_drop
   flutter_secure_storage_linux
   local_notifier
+  record_linux
   screen_retriever_linux
   url_launcher_linux
   window_manager
