@@ -1,65 +1,38 @@
 # Contributing to VOID LAN
 
-Thank you for contributing.
+## Setup
 
-## Development Rules
+```bash
+git clone <your-fork-url>
+cd void_lan
+flutter create --platforms=windows,linux .
+flutter pub get
+```
 
-Before submitting changes:
+Run `flutter analyze` and `flutter test` before opening a PR — CI runs
+the same two commands.
 
-1. Create a separate branch.
-2. Keep commits small and descriptive.
-3. Test changes locally.
-4. Follow Dart and Flutter style guidelines.
+## Branching
 
-Example:
+- Branch from `main`: `feature/<short-description>` or `fix/<short-description>`.
+- Keep PRs scoped to one feature or fix; large mixed PRs are harder to review and revert.
 
+## Code style
 
-feature/file-transfer
-fix/network-discovery
-docs/security-update
+- `flutter_lints` is enforced via `analysis_options.yaml`; fix warnings rather than suppressing them.
+- Prefer `const` constructors and immutable models.
+- Comments explain *why*, not *what* — if a comment just restates the code, delete it instead.
+- New services go in `lib/data/services/`, new screens in `lib/presentation/<feature>/`, matching the existing feature-first layout described in the README.
 
+## Networking/security changes
 
-## Pull Requests
+Anything touching `lib/data/services/` (sockets, pairing, transfer) gets
+extra scrutiny — please describe the wire-format or trust-model impact
+in the PR description, not just the code diff.
 
-Pull requests should include:
+## Reporting issues
 
-- Clear description of changes
-- Reason for the change
-- Testing information
-- Screenshots (for UI changes)
-
-## Code Quality
-
-Requirements:
-
-- No unused dependencies
-- No hardcoded secrets
-- No breaking API changes without discussion
-- Keep offline-first principles
-
-## Concurrency and Networking
-
-VOID LAN is designed for LAN environments.
-
-Contributors should consider:
-
-- Thread safety
-- Race conditions
-- Concurrent file transfers
-- Network failures
-- Data consistency
-
-## Review Process
-
-All changes are reviewed before merging.
-
-Maintainers may request:
-
-- Code changes
-- Additional tests
-- Documentation updates
-
-## Code of Conduct
-
-Be respectful and constructive.
-Harassment or malicious contributions are not accepted.
+Include your platform (Windows/Android/Linux), Flutter version
+(`flutter --version`), and steps to reproduce. For networking issues,
+note whether both devices are on the same subnet and whether a
+firewall could be blocking ports 58201–58203 (see README).

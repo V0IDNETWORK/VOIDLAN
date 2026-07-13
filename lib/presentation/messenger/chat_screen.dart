@@ -152,6 +152,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             : Text(widget.peerName),
         actions: [
           IconButton(
+            tooltip: _searching ? 'Close search' : 'Search messages',
             icon: Icon(_searching ? Icons.close : Icons.search),
             onPressed: () => setState(() {
               _searching = !_searching;
@@ -237,7 +238,7 @@ class _ReplyPreview extends StatelessWidget {
             child: Text('Replying to: ${message.text}',
                 maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
-          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onCancel),
+          IconButton(tooltip: 'Cancel reply', icon: const Icon(Icons.close, size: 18), onPressed: onCancel),
         ],
       ),
     );
@@ -285,10 +286,12 @@ class _Composer extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
+                      tooltip: isPaused ? 'Resume recording' : 'Pause recording',
                       onPressed: onPausePressed,
                       icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
                     ),
                     IconButton(
+                      tooltip: 'Discard recording',
                       onPressed: onCancelPressed,
                       icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
                     ),
@@ -326,6 +329,7 @@ class _Composer extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
+                  tooltip: isRecording ? 'Stop and send voice message' : 'Record voice message',
                   onPressed: onMicPressed,
                   icon: Icon(isRecording ? Icons.stop : Icons.mic_none),
                   style: isRecording
@@ -333,7 +337,11 @@ class _Composer extends ConsumerWidget {
                       : null,
                 ),
                 const SizedBox(width: 4),
-                IconButton.filled(icon: const Icon(Icons.send), onPressed: isRecording ? null : onSend),
+                IconButton.filled(
+                  tooltip: 'Send message',
+                  icon: const Icon(Icons.send),
+                  onPressed: isRecording ? null : onSend,
+                ),
               ],
             ),
           ],

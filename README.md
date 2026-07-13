@@ -6,6 +6,30 @@ Internet connection. Built with Flutter, Riverpod, GoRouter, and
 Clean Architecture / MVVM. Primary targets are **Windows** and
 **Android**; **Linux** is supported as a secondary desktop target.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+## Platform support
+
+| Platform | Status | Notes |
+|---|---|---|
+| Android | Primary target | `minSdk 24`, all runtime permissions declared |
+| Windows | Primary target | Needs `flutter create --platforms=windows .` once — see below |
+| Linux | Secondary target | Needs `flutter create --platforms=linux .` once — see below |
+| Web | Not supported | LAN discovery and raw TCP sockets aren't available in a browser sandbox; this is a platform limitation, not a missing feature |
+| iOS/macOS | Not supported | Out of scope per the original brief |
+
+## Screenshots
+
+_Not included — this project was generated in a sandbox with no
+Android/Windows emulator or display to capture real screenshots from.
+Once you've run the app locally, drop images here:_
+
+```markdown
+| LAN Explorer | Messenger | About |
+|---|---|---|
+| ![explorer](docs/screenshots/explorer.png) | ![messenger](docs/screenshots/messenger.png) | ![about](docs/screenshots/about.png) |
+```
+
 ## What's new in this pass
 
 * **Settings screen** (`/settings`, pushed from the LAN Explorer app bar) — theme selection (system/light/dark) and build info. Kept out of the tab bar since the original spec fixes the app at exactly three tabs.
@@ -184,6 +208,58 @@ brief, each reasoned through rather than defaulted into:
   leave `MessageType.voice` as dead code — both have had a stable core
   API for a long time.
 
+## Folder structure
+
+```
+lib/
+  core/
+    constants/     app_constants.dart — ports, protocol tokens, timeouts, storage keys
+    theme/         app_colors.dart, app_theme.dart — Material 3 light/dark cyber theme
+    router/        app_router.dart — GoRouter config, AppRoutes constants
+    utils/         network_utils.dart — subnet math, local IP resolution
+  data/
+    models/        DeviceModel, ChatMessageModel, ConversationModel, TransferTaskModel
+    services/      every stateful I/O concern — sockets, discovery, transfer, chat,
+                   pairing, notifications, voice recording — one responsibility each
+  presentation/
+    providers/     Riverpod glue between services/ and the UI (the "ViewModel" layer)
+    shell/         MainShell — responsive 3-tab NavigationRail/NavigationBar shell
+    shared/        cross-feature widgets (currently: GlassAppBar)
+    lan_explorer/  Tab 1 + its widgets/ (device tile, details, dialogs, radar sweep)
+    about/         Tab 2 + its widgets/ (link card)
+    messenger/     Tab 3 + its widgets/ (bubbles, composer, waveform, recording)
+    settings/      Settings screen (pushed, not a tab)
+android/           Complete, hand-written Gradle/manifest/Kotlin
+windows/, linux/   README_FIRST.txt only — run `flutter create` to generate these
+```
+
+## Accessibility
+
+- All interactive icons (`IconButton`, tiles) use Material's default
+  48dp minimum touch target and carry a `tooltip` where they aren't
+  self-explanatory from an adjacent label, which doubles as the
+  screen-reader announcement.
+- Text styles come from the `Theme`'s `TextTheme` rather than
+  hardcoded sizes, so they scale with the system's text-scale factor
+  and respect a user's OS-level "large text" setting.
+- Status is never conveyed by color alone: online/offline/pairing on
+  a device tile pairs a colored dot with an icon and text label; voice
+  message playback state pairs an icon change with a text duration.
+- Desktop keyboard navigation relies on Flutter's built-in `Focus`
+  traversal for `TextField`, buttons, and list items, which comes free
+  with Material widgets; no custom focus-trapping was added, since
+  none of the custom widgets (`RadarSweep`, `WaveformBars`) are
+  interactive — they're decorative/read-only, so they're marked
+  `ExcludeSemantics` rather than given fake focus stops.
+- **Not yet done:** a full manual screen-reader pass (TalkBack/NVDA)
+  wasn't possible in this sandbox — there's no accessibility service
+  to attach to in a headless container. Treat the above as
+  code-level accessibility hygiene, not a substitute for a real
+  screen-reader test pass before shipping.
+
 ## License
 
-Provided as-is for the requesting party's own use.
+[MIT](LICENSE).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and
+[CHANGELOG.md](CHANGELOG.md) for release history.

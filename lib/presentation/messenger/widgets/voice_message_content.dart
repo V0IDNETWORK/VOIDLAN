@@ -131,6 +131,7 @@ class _VoiceMessageContentState extends State<VoiceMessageContent> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
+          tooltip: _state == PlayerState.playing ? 'Pause voice message' : 'Play voice message',
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
           icon: Icon(

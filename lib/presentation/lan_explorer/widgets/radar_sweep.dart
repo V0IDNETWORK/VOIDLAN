@@ -37,17 +37,19 @@ class _RadarSweepState extends State<RadarSweep> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: widget.size,
-      height: widget.size,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) => CustomPaint(
-          painter: _RadarPainter(
-            progress: _controller.value,
-            primary: scheme.primary,
-            secondary: scheme.secondary,
-            active: widget.active,
+    return ExcludeSemantics(
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) => CustomPaint(
+            painter: _RadarPainter(
+              progress: _controller.value,
+              primary: scheme.primary,
+              secondary: scheme.secondary,
+              active: widget.active,
+            ),
           ),
         ),
       ),

@@ -22,17 +22,19 @@ class WaveformBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      width: levels.length * (barWidth + gap),
-      child: CustomPaint(
-        painter: _WaveformPainter(
-          levels: levels,
-          color: color,
-          activeColor: activeColor ?? color,
-          progress: progress,
-          barWidth: barWidth,
-          gap: gap,
+    return ExcludeSemantics(
+      child: SizedBox(
+        height: height,
+        width: levels.length * (barWidth + gap),
+        child: CustomPaint(
+          painter: _WaveformPainter(
+            levels: levels,
+            color: color,
+            activeColor: activeColor ?? color,
+            progress: progress,
+            barWidth: barWidth,
+            gap: gap,
+          ),
         ),
       ),
     );
