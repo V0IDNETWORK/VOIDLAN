@@ -7,7 +7,7 @@ Clean Architecture / MVVM. Primary targets are **Windows** and
 **Android**; **Linux** is supported as a secondary desktop target.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/OWNER/void_lan/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](app_icon.png)](https://github.com/V0IDNETWORK/VOIDLAN)
 
 _Replace `OWNER` in the badge URL above with your GitHub username/org once this is pushed to a repo — it can't resolve to a real workflow run from inside this sandbox._
 
