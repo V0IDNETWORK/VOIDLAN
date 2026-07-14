@@ -1,7 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-
+import 'package:record/record.dart';
 import '../../../data/services/voice_recorder_service.dart';
 import 'waveform_bars.dart';
 

@@ -5,14 +5,26 @@ import '../../data/services/file_transfer_service.dart';
 import 'service_providers.dart';
 
 /// Keeps the live list of every transfer task (sends and receives) in
-/// sync with [FileTransferService.taskUpdates].
+/// sync with [FileTransferService.taskUpdates], seeded from persisted
+/// history so completed/failed transfers survive an app restart.
 class TransferListNotifier extends StateNotifier<List<TransferTaskModel>> {
   TransferListNotifier(this._ref) : super([]) {
+    _loadHistory();
     _ref.read(fileTransferServiceProvider).taskUpdates.listen(_upsert);
   }
 
   final Ref _ref;
   final Set<String> _notifiedComplete = {};
+  static const _terminalStates = {
+    TransferState.completed,
+    TransferState.failed,
+    TransferState.cancelled,
+  };
+
+  Future<void> _loadHistory() async {
+    final history = await _ref.read(transferHistoryServiceProvider).load();
+    state = [...history, ...state];
+  }
 
   void _upsert(TransferTaskModel task) {
     final index = state.indexWhere((t) => t.id == task.id);
@@ -22,6 +34,9 @@ class TransferListNotifier extends StateNotifier<List<TransferTaskModel>> {
       final updated = [...state];
       updated[index] = task;
       state = updated;
+    }
+    if (_terminalStates.contains(task.state)) {
+      _ref.read(transferHistoryServiceProvider).record(task);
     }
     if (task.state == TransferState.completed &&
         _notifiedComplete.add(task.id)) {

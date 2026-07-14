@@ -156,17 +156,23 @@ class LanDiscoveryService {
     const batchSize = 32;
     for (var i = 0; i < hosts.length; i += batchSize) {
       final batch = hosts.skip(i).take(batchSize);
-      await Future.wait(batch.map(_probeHost));
+      await Future.wait(batch.map(probeHost));
     }
   }
 
-  Future<void> _probeHost(String ip) async {
+  /// Attempts a short TCP connect to [ip]'s control port. Used by the
+  /// subnet sweep and also exposed directly for manual "connect by IP"
+  /// entry — the same success/failure and MAC-lookup logic applies
+  /// whether the address came from a sweep or the user typed it in,
+  /// which matters on networks (e.g. some mobile hotspots) where
+  /// broadcast/multicast discovery is blocked but direct TCP isn't.
+  Future<bool> probeHost(String ip, {Duration? timeout}) async {
     final stopwatch = Stopwatch()..start();
     try {
       final socket = await Socket.connect(
         ip,
         AppConstants.controlPort,
-        timeout: AppConstants.scanConnectTimeout,
+        timeout: timeout ?? AppConstants.scanConnectTimeout,
       );
       stopwatch.stop();
       socket.destroy();
@@ -178,9 +184,12 @@ class LanDiscoveryService {
         status: DeviceStatus.online,
         lastSeen: DateTime.now(),
       ));
+      return true;
     } catch (_) {
       // Host did not answer on the control port within the timeout;
-      // it is simply not reported (absence == offline for scan purposes).
+      // absence == offline for scan purposes, but manual-connect calls
+      // still get an honest false rather than a silent no-op.
+      return false;
     }
   }
 

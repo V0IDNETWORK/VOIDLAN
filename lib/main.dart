@@ -1,10 +1,8 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:window_manager/window_manager.dart';
-
 import 'app.dart';
 
 /// Entry point. Detects the running platform up front and applies the
@@ -51,5 +49,6 @@ Future<void> _requestAndroidPermissions() async {
     Permission.nearbyWifiDevices,
     Permission.notification,
     Permission.microphone,
+    Permission.locationWhenInUse,
   ].request();
 }

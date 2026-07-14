@@ -9,6 +9,7 @@ import '../../data/services/local_server_service.dart';
 import '../../data/services/messenger_service.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/pairing_service.dart';
+import '../../data/services/transfer_history_service.dart';
 import '../../data/services/voice_recorder_service.dart';
 
 /// Shared [Logger] instance used across the data layer.
@@ -46,6 +47,9 @@ final fileTransferServiceProvider = Provider<FileTransferService>((ref) {
   ref.onDispose(service.dispose);
   return service;
 });
+
+final transferHistoryServiceProvider =
+    Provider<TransferHistoryService>((ref) => TransferHistoryService(logger: ref.watch(loggerProvider)));
 
 final pairingServiceProvider = Provider<PairingService?>((ref) {
   final identity = ref.watch(deviceIdentityProvider).valueOrNull;

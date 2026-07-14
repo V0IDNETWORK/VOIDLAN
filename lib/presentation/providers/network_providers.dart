@@ -49,6 +49,17 @@ class DeviceListNotifier extends StateNotifier<List<DeviceModel>> {
         );
   }
 
+  /// Connects directly to a manually-entered IP, bypassing broadcast
+  /// discovery entirely. Returns whether the host answered — useful on
+  /// networks (some mobile hotspots, isolated VLANs) that block
+  /// broadcast/multicast but still allow direct connections.
+  Future<bool> connectByIp(String ip) {
+    return _ref.read(lanDiscoveryServiceProvider).probeHost(
+          ip,
+          timeout: const Duration(seconds: 3),
+        );
+  }
+
   void clearStale() {
     final cutoff = DateTime.now().subtract(const Duration(minutes: 2));
     state = state

@@ -6,8 +6,10 @@ import '../../presentation/lan_explorer/lan_explorer_screen.dart';
 import '../../presentation/lan_explorer/widgets/device_details_screen.dart';
 import '../../presentation/messenger/chat_screen.dart';
 import '../../presentation/messenger/messenger_screen.dart';
+import '../../presentation/network_status/network_status_screen.dart';
 import '../../presentation/settings/settings_screen.dart';
 import '../../presentation/shell/main_shell.dart';
+import '../../presentation/transfers/transfer_history_screen.dart';
 
 /// Route paths, centralized so screens navigate via constants instead
 /// of hand-typed strings.
@@ -20,6 +22,8 @@ class AppRoutes {
   static const messenger = '/messenger';
   static const chat = 'chat';
   static const settings = '/settings';
+  static const networkStatus = '/network-status';
+  static const transfers = '/transfers';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -90,6 +94,16 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.settings,
       parentNavigatorKey: rootNavigatorKey,
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.networkStatus,
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) => const NetworkStatusScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.transfers,
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) => const TransferHistoryScreen(),
     ),
   ],
 );

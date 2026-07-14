@@ -108,6 +108,16 @@ class _LanExplorerScreenState extends ConsumerState<LanExplorerScreen> {
           ),
           const SizedBox(width: 4),
           IconButton(
+            tooltip: 'Transfer history',
+            onPressed: () => context.push(AppRoutes.transfers),
+            icon: const Icon(Icons.swap_vert_circle_outlined),
+          ),
+          IconButton(
+            tooltip: 'Network status',
+            onPressed: () => context.push(AppRoutes.networkStatus),
+            icon: const Icon(Icons.monitor_heart_outlined),
+          ),
+          IconButton(
             tooltip: 'Settings',
             onPressed: () => context.push(AppRoutes.settings),
             icon: const Icon(Icons.settings_outlined),
@@ -175,7 +185,54 @@ class _LanExplorerScreenState extends ConsumerState<LanExplorerScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showConnectByIpDialog(context, ref),
+        icon: const Icon(Icons.add_link),
+        label: const Text('Connect by IP'),
+      ),
     );
+  }
+
+  Future<void> _showConnectByIpDialog(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Connect by IP'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            hintText: '192.168.1.42',
+            helperText: 'For networks where automatic discovery is blocked '
+                '(some mobile hotspots) — enter the other device\'s IP directly.',
+          ),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Connect'),
+          ),
+        ],
+      ),
+    );
+
+    final ip = result?.trim();
+    if (ip == null || ip.isEmpty || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(SnackBar(content: Text('Connecting to $ip…')));
+    final success = await ref.read(deviceListProvider.notifier).connectByIp(ip);
+    if (!mounted) return;
+    messenger.showSnackBar(SnackBar(
+      content: Text(success ? 'Connected to $ip' : 'Could not reach $ip'),
+    ));
   }
 }
 
