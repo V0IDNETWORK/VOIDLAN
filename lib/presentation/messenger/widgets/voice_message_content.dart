@@ -1,10 +1,8 @@
 import 'dart:io';
 import 'dart:math';
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/chat_message_model.dart';
 import 'waveform_bars.dart';
