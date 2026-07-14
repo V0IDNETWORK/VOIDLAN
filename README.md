@@ -1,7 +1,7 @@
 # VOID LAN
 
 <p align="center">
-  <img src="logo.png" width="200" alt="VOIDLAN Logo">
+  <img src="app_icon.png" width="200" alt="VOIDLAN Logo">
 </p>
 
 <h1 align="center">VOIDLAN</h1>
