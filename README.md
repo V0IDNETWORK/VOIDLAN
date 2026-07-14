@@ -1,9 +1,4 @@
 # VOID LAN
-## Screenshots
-
-| LAN Explorer | Messenger | About |
-|---|---|---|
-| ![explorer](docs/screenshots/explorer.png) | ![messenger](docs/screenshots/messenger.png) | ![about](docs/screenshots/about.png) |
 An offline-first LAN companion app: discover devices on your local
 network, transfer files peer-to-peer, and chat — all without an
 Internet connection. Built with Flutter, Riverpod, GoRouter, and
@@ -27,20 +22,9 @@ _Replace `OWNER` in the badge URL above with your GitHub username/org once this 
 
 ## Screenshots
 
-_Not included — this project was generated in a sandbox with no
-Android/Windows emulator or display to capture real screenshots from.
-Once you've run the app locally, drop images here:_
-
-## Screenshots
-
-### LAN Explorer
-![explorer](docs/screenshots/explorer.png)
-
-### Messenger
-![messenger](docs/screenshots/messenger.png)
-
-### About
-![about](docs/screenshots/about.png)
+| LAN Explorer | Messenger | About |
+|---|---|---|
+| ![explorer](docs/screenshots/explorer.png) | ![messenger](docs/screenshots/messenger.png) | ![about](docs/screenshots/about.png) |
 
 ## What's new
 
