@@ -1,5 +1,15 @@
 # VOID LAN
 
+<p align="center">
+  <img src="logo.png" width="200" alt="VOIDLAN Logo">
+</p>
+
+<h1 align="center">VOIDLAN</h1>
+
+<p align="center">
+  Offline-first LAN companion app — discover devices, transfer files, and chat without the Internet.
+</p>
+
 An offline-first LAN companion app: discover devices on your local
 network, transfer files peer-to-peer, and chat — all without an
 Internet connection. Built with Flutter, Riverpod, GoRouter, and
