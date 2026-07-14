@@ -27,11 +27,16 @@ _Not included — this project was generated in a sandbox with no
 Android/Windows emulator or display to capture real screenshots from.
 Once you've run the app locally, drop images here:_
 
-```markdown
-| LAN Explorer | Messenger | About |
-|---|---|---|
-| ![explorer](docs/screenshots/explorer.png) | ![messenger](docs/screenshots/messenger.png) | ![about](docs/screenshots/about.png) |
-```
+## Screenshots
+
+### LAN Explorer
+![explorer](docs/screenshots/explorer.png)
+
+### Messenger
+![messenger](docs/screenshots/messenger.png)
+
+### About
+![about](docs/screenshots/about.png)
 
 ## What's new
 
