@@ -30,12 +30,42 @@ Once you've run the app locally, drop images here:_
 | ![explorer](docs/screenshots/explorer.png) | ![messenger](docs/screenshots/messenger.png) | ![about](docs/screenshots/about.png) |
 ```
 
-## What's new in this pass
+## What's new
+
+### This pass — two confirmed crash fixes + real SQLite persistence
+
+Two bugs from an actual `flutter run -d windows` session are fixed, not just theorized about:
+
+* **Hero tag collision crash** — `LanExplorerScreen` and `MessengerScreen` each have a `FloatingActionButton`, and the `StatefulShellRoute` shell keeps every tab's widget tree alive in an `IndexedStack` simultaneously. Both FABs collided on Flutter's shared default hero tag the moment a route transition tried to animate them. Fixed with explicit, unique `heroTag`s on both.
+* **"Bad state: Stream has already been listened to"** — a real bug in `LanDiscoveryService`: `startResponder()` (run once at boot) and `_broadcastHandshake()` (run on every scan) were each calling `.listen()` on the same `RawDatagramSocket`, whose stream is single-subscription. Rebuilt around exactly one persistent listener (`_ensureSocketReady`) that dispatches both "answer someone else's broadcast" and "collect replies to mine."
+* **Messages, conversations, and transfer history now persist to a real SQLite database** (`DatabaseService`, via `sqflite`/`sqflite_common_ffi`) instead of one-JSON-file-per-conversation and a single JSON blob for transfers. This replaces read-modify-write-the-whole-file on every message with proper indexed row writes, and conversations (not just their messages) now survive a restart.
+
+**Real caveat, not a hidden gotcha:** `sqflite_common_ffi` needs the native `sqlite3` library loadable on Windows/Linux.
+- `flutter run` (debug/profile) on Windows: works as-is — the `sqlite3` package's build hooks bundle `sqlite3.dll` automatically.
+- `flutter build windows` (**release**): you must manually copy the current `sqlite3.dll` into the same folder as the built `.exe`, per the `sqflite_common_ffi` docs — this is not something Flutter's build does for you.
+- Linux: needs the system `libsqlite3-0` package installed (`sudo apt-get install libsqlite3-0`).
+- Android: unaffected — plain `sqflite` uses the platform's bundled SQLite, no extra steps.
+
+### Previous pass — network resilience & file management
+
+* **Network Status screen** (pushed from the LAN Explorer app bar) — real connection type, SSID (where the platform/permissions allow it), local IP, gateway IP, and subnet, plus a "connection quality" indicator derived honestly from actual ping times to discovered peers rather than an invented signal-strength number.
+* **Manual "Connect by IP"** — a FAB on LAN Explorer for networks where broadcast/multicast discovery is blocked (some mobile hotspots): reuses the exact same TCP-probe logic as the subnet sweep, just against one address the user typed in.
+* **Transfer History** (pushed from LAN Explorer) — completed/failed/cancelled transfers now persist to disk (`TransferHistoryService`) and survive an app restart, with search, section grouping (current/completed/failed), and an "open containing folder" (desktop) / "share file" (Android) action per completed transfer.
+
+Explicitly deferred this round, and why — each needs either a dependency with an API not confident enough to write blind, or conflicts with an earlier explicit constraint:
+
+* **QR pairing** — needs a QR-generation package (e.g. `qr_flutter`) and a camera-based scanner (e.g. `mobile_scanner`), neither currently in this project. Mechanically it would generate a QR encoding this device's IP + a pairing nonce and feed a scanned code into the existing `PairingService.requestPairing` flow — the pairing protocol underneath doesn't need to change, only the code that gets the peer's address into it.
+* **Windows system tray / minimize-to-tray / start-with-Windows** — a tray icon on Windows needs an actual `.ico` **file**, not a widget-drawn icon; every Flutter tray package (e.g. `tray_manager`) takes a file path. That's a direct conflict with this project's "no assets/ directory" constraint from an earlier round. It's resolvable (either accept one small bundled `.ico`, or generate one at first launch from a rendered widget and cache it), but it's a deliberate trade-off, not something to silently work around.
+* **Android background transfers surviving the app being fully killed** — needs a foreground service (e.g. via `flutter_foreground_task`) wrapping the transfer socket loop. The manifest already declares `FOREGROUND_SERVICE_DATA_SYNC` for this; the service itself isn't wired up.
+* **Signal strength (RSSI) and raw link speed** on the Network Status screen — not available through `network_info_plus`/`connectivity_plus` on any of this project's target platforms; would need a platform channel per OS. Shown as "unavailable" in the UI rather than a fabricated number.
+* **Battery-optimization exemption prompts** on Android — mechanically straightforward (`permission_handler`'s `Permission.ignoreBatteryOptimizations`) but only meaningfully useful once the foreground service above exists.
+
+### Previous pass — UI polish & GitHub readiness
 
 * **Settings screen** (`/settings`, pushed from the LAN Explorer app bar) — theme selection (system/light/dark) and build info. Kept out of the tab bar since the original spec fixes the app at exactly three tabs.
-* **Glassmorphism app bars** (`GlassAppBar`) — a `BackdropFilter` blur + gradient tint, built from stock Flutter widgets, applied to all five screens. No image assets anywhere in the project; every visual is Material icons, gradients, or `CustomPainter`.
+* **Glassmorphism app bars** (`GlassAppBar`) — a `BackdropFilter` blur + gradient tint, built from stock Flutter widgets, applied to every screen. No image assets anywhere in the project; every visual is Material icons, gradients, or `CustomPainter`.
 * **Radar-sweep scan animation** (`RadarSweep`, `CustomPainter`) replaces the plain spinner in LAN Explorer's empty/scanning state.
-* **Voice messages now have pause/cancel and a real waveform**: `VoiceRecorderService` exposes `pause()`/`resume()`/`amplitudeStream()`; `RecordingIndicator` renders the live input level while recording; `VoiceMessageContent` renders a seeded per-message waveform during playback with a progress sweep synced to `audioplayers`' position/duration streams.
+* **Voice messages** got pause/cancel and a real waveform: `VoiceRecorderService` exposes `pause()`/`resume()`/`amplitudeStream()`; `RecordingIndicator` renders the live input level while recording; `VoiceMessageContent` renders a seeded per-message waveform during playback with a progress sweep synced to `audioplayers`' position/duration streams.
 * **Entrance animations** (`flutter_animate`, actually wired up — previously declared but unused) on device tiles, conversation tiles, message bubbles, and About links.
 * Removed the unused `assets/` folder and `cupertino_icons` dependency — nothing in the app depends on bundled image assets or iOS-style icons.
 
