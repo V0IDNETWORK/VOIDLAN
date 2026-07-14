@@ -30,7 +30,13 @@ class LanDiscoveryService {
   final Logger _logger;
   final _deviceController = StreamController<DeviceModel>.broadcast();
   RawDatagramSocket? _udpSocket;
+  Future<void>? _socketReady;
   bool _scanning = false;
+
+  // Set once by startResponder and reused to answer other instances'
+  // discovery broadcasts for as long as the app runs.
+  String? _localDeviceId;
+  String? _localDeviceName;
 
   Stream<DeviceModel> get deviceStream => _deviceController.stream;
   bool get isScanning => _scanning;
@@ -58,95 +64,102 @@ class LanDiscoveryService {
     }
   }
 
-  /// Sends a UDP broadcast hello and listens briefly for replies from
-  /// other VOID LAN instances, which respond with their real hostname,
-  /// OS, and device type — richer data than the TCP sweep can infer.
-  Future<void> _broadcastHandshake(
-      String? localDeviceId, String? localDeviceName) async {
-    try {
-      _udpSocket ??= await RawDatagramSocket.bind(
+  /// Binds the discovery UDP socket and attaches its single, permanent
+  /// listener exactly once. `RawDatagramSocket`'s stream is
+  /// single-subscription, so both the always-on responder (answering
+  /// other instances' broadcasts) and the scan's reply-collection path
+  /// share this one listener instead of each calling `.listen()`
+  /// independently — calling it twice is what previously crashed with
+  /// "Bad state: Stream has already been listened to."
+  Future<void> _ensureSocketReady() {
+    return _socketReady ??= () async {
+      _udpSocket = await RawDatagramSocket.bind(
         InternetAddress.anyIPv4,
         AppConstants.discoveryPort,
         reuseAddress: true,
       );
       _udpSocket!.broadcastEnabled = true;
-
-      final sub = _udpSocket!.listen((event) {
-        if (event != RawSocketEvent.read) return;
-        final dgram = _udpSocket!.receive();
-        if (dgram == null) return;
-        _handleDiscoveryReply(dgram);
+      _udpSocket!.listen(_onDatagramEvent, onError: (e) {
+        _logger.w('Discovery socket error: $e');
       });
+    }();
+  }
 
+  void _onDatagramEvent(RawSocketEvent event) {
+    if (event != RawSocketEvent.read) return;
+    final dgram = _udpSocket?.receive();
+    if (dgram == null) return;
+
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(utf8.decode(dgram.data)) as Map<String, dynamic>;
+    } catch (e) {
+      _logger.d('Malformed discovery packet ignored: $e');
+      return;
+    }
+
+    if (data['magic'] == AppConstants.discoveryMagic) {
+      _replyToHello(dgram, data);
+    } else if (data['magic'] == AppConstants.discoveryAck) {
+      _handleDiscoveryReply(dgram, data);
+    }
+  }
+
+  void _replyToHello(Datagram dgram, Map<String, dynamic> data) {
+    if (_localDeviceId == null || _localDeviceName == null) return;
+    final reply = jsonEncode({
+      'magic': AppConstants.discoveryAck,
+      'deviceId': _localDeviceId,
+      'name': _localDeviceName,
+      'platform': Platform.operatingSystem,
+    });
+    _udpSocket!.send(utf8.encode(reply), dgram.address, AppConstants.discoveryPort);
+  }
+
+  /// Sends a UDP broadcast hello; replies arrive through the shared
+  /// listener set up by [_ensureSocketReady] and are pushed to
+  /// [deviceStream] by [_handleDiscoveryReply].
+  Future<void> _broadcastHandshake(
+      String? localDeviceId, String? localDeviceName) async {
+    try {
+      await _ensureSocketReady();
       final payload = jsonEncode({
         'magic': AppConstants.discoveryMagic,
         'deviceId': localDeviceId,
         'name': localDeviceName,
         'platform': Platform.operatingSystem,
       });
-      final bytes = utf8.encode(payload);
-
       _udpSocket!.send(
-          bytes, InternetAddress('255.255.255.255'), AppConstants.discoveryPort);
-
+          utf8.encode(payload), InternetAddress('255.255.255.255'), AppConstants.discoveryPort);
       await Future.delayed(const Duration(seconds: 2));
-      await sub.cancel();
     } catch (e) {
       _logger.w('UDP discovery unavailable: $e');
     }
   }
 
-  void _handleDiscoveryReply(Datagram dgram) {
-    try {
-      final data = jsonDecode(utf8.decode(dgram.data)) as Map<String, dynamic>;
-      if (data['magic'] != AppConstants.discoveryAck) return;
-      _deviceController.add(DeviceModel(
-        ipAddress: dgram.address.address,
-        deviceId: data['deviceId'] as String?,
-        hostname: data['name'] as String?,
-        operatingSystem: data['platform'] as String?,
-        deviceType: _typeFromPlatform(data['platform'] as String?),
-        status: DeviceStatus.online,
-        isVoidLanPeer: true,
-        lastSeen: DateTime.now(),
-      ));
-    } catch (e) {
-      _logger.d('Malformed discovery reply ignored: $e');
-    }
+  void _handleDiscoveryReply(Datagram dgram, Map<String, dynamic> data) {
+    _deviceController.add(DeviceModel(
+      ipAddress: dgram.address.address,
+      deviceId: data['deviceId'] as String?,
+      hostname: data['name'] as String?,
+      operatingSystem: data['platform'] as String?,
+      deviceType: _typeFromPlatform(data['platform'] as String?),
+      status: DeviceStatus.online,
+      isVoidLanPeer: true,
+      lastSeen: DateTime.now(),
+    ));
   }
 
-  /// Starts a listener that answers other instances' discovery
-  /// broadcasts. Call once at app startup alongside the local server.
+  /// Registers this device's identity so the shared listener can answer
+  /// other instances' discovery broadcasts, and ensures the socket is
+  /// bound. Call once at app startup alongside the local server.
   Future<void> startResponder({
     required String deviceId,
     required String deviceName,
   }) async {
-    _udpSocket ??= await RawDatagramSocket.bind(
-      InternetAddress.anyIPv4,
-      AppConstants.discoveryPort,
-      reuseAddress: true,
-    );
-    _udpSocket!.broadcastEnabled = true;
-    _udpSocket!.listen((event) {
-      if (event != RawSocketEvent.read) return;
-      final dgram = _udpSocket!.receive();
-      if (dgram == null) return;
-      try {
-        final data =
-            jsonDecode(utf8.decode(dgram.data)) as Map<String, dynamic>;
-        if (data['magic'] != AppConstants.discoveryMagic) return;
-        final reply = jsonEncode({
-          'magic': AppConstants.discoveryAck,
-          'deviceId': deviceId,
-          'name': deviceName,
-          'platform': Platform.operatingSystem,
-        });
-        _udpSocket!.send(
-            utf8.encode(reply), dgram.address, AppConstants.discoveryPort);
-      } catch (_) {
-        // Ignore non-VOID-LAN broadcast noise on the same port.
-      }
-    });
+    _localDeviceId = deviceId;
+    _localDeviceName = deviceName;
+    await _ensureSocketReady();
   }
 
   /// Concurrently attempts a short TCP connect to every candidate host's
@@ -250,6 +263,8 @@ class LanDiscoveryService {
 
   void dispose() {
     _udpSocket?.close();
+    _udpSocket = null;
+    _socketReady = null;
     _deviceController.close();
   }
 }

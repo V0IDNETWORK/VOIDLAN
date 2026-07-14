@@ -83,35 +83,4 @@ class TransferTaskModel {
 
   @override
   int get hashCode => id.hashCode;
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'fileName': fileName,
-        'totalBytes': totalBytes,
-        'direction': direction.name,
-        'peerIp': peerIp,
-        'peerName': peerName,
-        'localPath': localPath,
-        'transferredBytes': transferredBytes,
-        'state': state.name,
-        'startedAt': startedAt?.toIso8601String(),
-        'errorMessage': errorMessage,
-      };
-
-  factory TransferTaskModel.fromJson(Map<String, dynamic> json) {
-    return TransferTaskModel(
-      id: json['id'] as String,
-      fileName: json['fileName'] as String,
-      totalBytes: json['totalBytes'] as int,
-      direction: TransferDirection.values.firstWhere((d) => d.name == json['direction']),
-      peerIp: json['peerIp'] as String,
-      peerName: json['peerName'] as String,
-      localPath: json['localPath'] as String?,
-      transferredBytes: json['transferredBytes'] as int? ?? 0,
-      state: TransferState.values.firstWhere((s) => s.name == json['state'],
-          orElse: () => TransferState.failed),
-      startedAt: json['startedAt'] != null ? DateTime.parse(json['startedAt'] as String) : null,
-      errorMessage: json['errorMessage'] as String?,
-    );
-  }
 }

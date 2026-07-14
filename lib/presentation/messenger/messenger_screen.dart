@@ -25,6 +25,7 @@ class MessengerScreen extends ConsumerWidget {
     return Scaffold(
       appBar: GlassAppBar(title: const Text('Messenger')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'messenger_fab',
         onPressed: () => _showNearbyPeers(context, ref, peers),
         icon: const Icon(Icons.person_add_alt_1),
         label: const Text('New chat'),

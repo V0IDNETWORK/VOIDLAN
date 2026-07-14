@@ -186,6 +186,7 @@ class _LanExplorerScreenState extends ConsumerState<LanExplorerScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'lan_explorer_fab',
         onPressed: () => _showConnectByIpDialog(context, ref),
         icon: const Icon(Icons.add_link),
         label: const Text('Connect by IP'),

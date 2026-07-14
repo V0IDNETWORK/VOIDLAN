@@ -1,14 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:logger/logger.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/chat_message_model.dart';
 import 'connection_manager.dart';
+import 'database_service.dart';
 import 'peer_connection.dart';
 
 /// Chat layer built on top of [ConnectionManager]'s control-port
@@ -17,16 +15,28 @@ import 'peer_connection.dart';
 /// their metadata here; the actual bytes go through
 /// [FileTransferService] on the dedicated transfer port and are linked
 /// back to the message by a shared `id`.
+///
+/// Persistence lives in SQLite via [DatabaseService]: each call below
+/// writes or reads exactly the row(s) it touches, rather than the
+/// previous JSON-file design's read-modify-write-whole-file per
+/// message. Conversations are now persisted too, so they (not just
+/// their messages) survive an app restart.
 class MessengerService {
-  MessengerService(this._connections, {required this.localDeviceId, Logger? logger})
-      : _logger = logger ?? Logger() {
+  MessengerService(
+    this._connections,
+    this._db, {
+    required this.localDeviceId,
+    Logger? logger,
+  }) : _logger = logger ?? Logger() {
     _connections.onConnection.listen(_attachListener);
     for (final conn in _connections.activeConnections.values) {
       _attachListener(conn);
     }
+    _loadConversations();
   }
 
   final ConnectionManager _connections;
+  final DatabaseService _db;
   final String localDeviceId;
   final Logger _logger;
   final _uuid = const Uuid();
@@ -48,6 +58,28 @@ class MessengerService {
 
   /// Emits a peer id whenever that peer starts typing.
   Stream<String> get typingStream => _typingController.stream;
+
+  Future<void> _loadConversations() async {
+    try {
+      final db = await _db.database;
+      final rows = await db.query('conversations');
+      for (final row in rows) {
+        final conversation = ConversationModel(
+          id: row['id'] as String,
+          peerId: row['peer_id'] as String,
+          peerName: row['peer_name'] as String,
+          peerIp: row['peer_ip'] as String,
+          unreadCount: row['unread_count'] as int,
+        );
+        _conversations[conversation.id] = conversation;
+      }
+      if (_conversations.isNotEmpty) {
+        _conversationsController.add(_conversations.values.toList());
+      }
+    } catch (e) {
+      _logger.w('Failed to load conversations: $e');
+    }
+  }
 
   void _attachListener(PeerConnection conn) {
     conn.messages.listen((json) {
@@ -72,7 +104,7 @@ class MessengerService {
 
   Future<List<ChatMessageModel>> historyFor(String conversationId) async {
     if (_messages.containsKey(conversationId)) return _messages[conversationId]!;
-    final loaded = await _loadFromDisk(conversationId);
+    final loaded = await _loadMessagesFromDb(conversationId);
     _messages[conversationId] = loaded;
     return loaded;
   }
@@ -83,12 +115,12 @@ class MessengerService {
     required String peerIp,
   }) {
     final id = conversationIdFor(peerId);
-    _conversations.putIfAbsent(
-      id,
-      () => ConversationModel(
-          id: id, peerId: peerId, peerName: peerName, peerIp: peerIp),
-    );
+    if (_conversations.containsKey(id)) return;
+    final conversation =
+        ConversationModel(id: id, peerId: peerId, peerName: peerName, peerIp: peerIp);
+    _conversations[id] = conversation;
     _conversationsController.add(_conversations.values.toList());
+    _persistConversation(conversation);
   }
 
   Future<ChatMessageModel> sendText({
@@ -183,16 +215,18 @@ class MessengerService {
     final list = _messages.putIfAbsent(message.conversationId, () => []);
     list.add(message);
     _messageController.add(message);
-    _persist(message.conversationId);
+    _persistMessage(message);
 
     final existing = _conversations[message.conversationId];
     if (existing != null) {
-      _conversations[message.conversationId] = existing.copyWith(
+      final updated = existing.copyWith(
         lastMessage: message,
         unreadCount:
             message.isOutgoing ? existing.unreadCount : existing.unreadCount + 1,
       );
+      _conversations[message.conversationId] = updated;
       _conversationsController.add(_conversations.values.toList());
+      _persistConversation(updated);
     }
   }
 
@@ -203,6 +237,7 @@ class MessengerService {
     if (idx == -1) return;
     list[idx] = list[idx].copyWith(status: status);
     _messageController.add(list[idx]);
+    _persistMessage(list[idx]);
   }
 
   void _markSeen(String conversationId, String messageId) {
@@ -212,6 +247,7 @@ class MessengerService {
     if (idx == -1) return;
     list[idx] = list[idx].copyWith(status: MessageStatus.seen);
     _messageController.add(list[idx]);
+    _persistMessage(list[idx]);
   }
 
   void togglePin(String conversationId, String messageId) {
@@ -221,7 +257,7 @@ class MessengerService {
     if (idx == -1) return;
     list[idx] = list[idx].copyWith(isPinned: !list[idx].isPinned);
     _messageController.add(list[idx]);
-    _persist(conversationId);
+    _persistMessage(list[idx]);
   }
 
   void deleteMessage(String conversationId, String messageId) {
@@ -231,7 +267,7 @@ class MessengerService {
     if (idx == -1) return;
     list[idx] = list[idx].copyWith(isDeleted: true);
     _messageController.add(list[idx]);
-    _persist(conversationId);
+    _persistMessage(list[idx]);
   }
 
   Future<ChatMessageModel> forwardMessage({
@@ -254,40 +290,73 @@ class MessengerService {
         .toList();
   }
 
-  Future<Directory> _conversationsDir() async {
-    final dir = await getApplicationSupportDirectory();
-    final chatsDir = Directory(p.join(dir.path, 'conversations'));
-    if (!await chatsDir.exists()) await chatsDir.create(recursive: true);
-    return chatsDir;
-  }
-
-  Future<void> _persist(String conversationId) async {
+  Future<void> _persistMessage(ChatMessageModel message) async {
     try {
-      final dir = await _conversationsDir();
-      final file = File(p.join(dir.path, '$conversationId.json'));
-      final list = _messages[conversationId] ?? [];
-      final payload = list
-          .where((m) => !m.isDeleted)
-          .map((m) => {...m.toJson(), 'isOutgoing': m.isOutgoing})
-          .toList();
-      await file.writeAsString(jsonEncode(payload));
+      final db = await _db.database;
+      await db.insert('messages', {
+        'id': message.id,
+        'conversation_id': message.conversationId,
+        'sender_id': message.senderId,
+        'is_outgoing': message.isOutgoing ? 1 : 0,
+        'type': message.type.name,
+        'timestamp': message.timestamp.toIso8601String(),
+        'text': message.text,
+        'file_path': message.filePath,
+        'file_name': message.fileName,
+        'file_size_bytes': message.fileSizeBytes,
+        'status': message.status.name,
+        'reply_to_id': message.replyToId,
+        'is_pinned': message.isPinned ? 1 : 0,
+        'is_deleted': message.isDeleted ? 1 : 0,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (e) {
-      _logger.w('Failed to persist conversation $conversationId: $e');
+      _logger.w('Failed to persist message ${message.id}: $e');
     }
   }
 
-  Future<List<ChatMessageModel>> _loadFromDisk(String conversationId) async {
+  Future<void> _persistConversation(ConversationModel conversation) async {
     try {
-      final dir = await _conversationsDir();
-      final file = File(p.join(dir.path, '$conversationId.json'));
-      if (!await file.exists()) return [];
-      final raw = jsonDecode(await file.readAsString()) as List<dynamic>;
-      return raw
-          .map((e) => ChatMessageModel.fromJson(
-                e as Map<String, dynamic>,
-                isOutgoing: e['isOutgoing'] as bool? ?? false,
-              ))
-          .toList();
+      final db = await _db.database;
+      await db.insert('conversations', {
+        'id': conversation.id,
+        'peer_id': conversation.peerId,
+        'peer_name': conversation.peerName,
+        'peer_ip': conversation.peerIp,
+        'unread_count': conversation.unreadCount,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (e) {
+      _logger.w('Failed to persist conversation ${conversation.id}: $e');
+    }
+  }
+
+  Future<List<ChatMessageModel>> _loadMessagesFromDb(String conversationId) async {
+    try {
+      final db = await _db.database;
+      final rows = await db.query(
+        'messages',
+        where: 'conversation_id = ? AND is_deleted = 0',
+        whereArgs: [conversationId],
+        orderBy: 'timestamp ASC',
+      );
+      return rows.map((row) {
+        return ChatMessageModel(
+          id: row['id'] as String,
+          conversationId: row['conversation_id'] as String,
+          senderId: row['sender_id'] as String,
+          isOutgoing: (row['is_outgoing'] as int) == 1,
+          type: MessageType.values.firstWhere((t) => t.name == row['type']),
+          timestamp: DateTime.parse(row['timestamp'] as String),
+          text: row['text'] as String?,
+          filePath: row['file_path'] as String?,
+          fileName: row['file_name'] as String?,
+          fileSizeBytes: row['file_size_bytes'] as int?,
+          status: MessageStatus.values.firstWhere((s) => s.name == row['status'],
+              orElse: () => MessageStatus.delivered),
+          replyToId: row['reply_to_id'] as String?,
+          isPinned: (row['is_pinned'] as int) == 1,
+          isDeleted: (row['is_deleted'] as int) == 1,
+        );
+      }).toList();
     } catch (e) {
       _logger.w('Failed to load conversation $conversationId: $e');
       return [];

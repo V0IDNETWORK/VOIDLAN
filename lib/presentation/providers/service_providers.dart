@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
 import '../../data/services/connection_manager.dart';
+import '../../data/services/database_service.dart';
 import '../../data/services/device_identity_service.dart';
 import '../../data/services/file_transfer_service.dart';
 import '../../data/services/lan_discovery_service.dart';
@@ -16,6 +17,14 @@ import '../../data/services/voice_recorder_service.dart';
 final loggerProvider = Provider<Logger>((ref) => Logger(
       printer: PrettyPrinter(methodCount: 0, colors: false),
     ));
+
+/// Single SQLite connection shared by every service that persists data
+/// (messages, conversations, transfer history).
+final databaseServiceProvider = Provider<DatabaseService>((ref) {
+  final service = DatabaseService();
+  ref.onDispose(service.close);
+  return service;
+});
 
 final deviceIdentityServiceProvider =
     Provider<DeviceIdentityService>((ref) => const DeviceIdentityService());
@@ -48,8 +57,8 @@ final fileTransferServiceProvider = Provider<FileTransferService>((ref) {
   return service;
 });
 
-final transferHistoryServiceProvider =
-    Provider<TransferHistoryService>((ref) => TransferHistoryService(logger: ref.watch(loggerProvider)));
+final transferHistoryServiceProvider = Provider<TransferHistoryService>(
+    (ref) => TransferHistoryService(ref.watch(databaseServiceProvider), logger: ref.watch(loggerProvider)));
 
 final pairingServiceProvider = Provider<PairingService?>((ref) {
   final identity = ref.watch(deviceIdentityProvider).valueOrNull;
@@ -76,6 +85,7 @@ final messengerServiceProvider = Provider<MessengerService?>((ref) {
   if (identity == null) return null;
   final service = MessengerService(
     ref.watch(connectionManagerProvider),
+    ref.watch(databaseServiceProvider),
     localDeviceId: identity.id,
     logger: ref.watch(loggerProvider),
   );
