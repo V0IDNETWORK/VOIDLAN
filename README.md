@@ -1,15 +1,5 @@
 # VOID LAN
 
-<p align="center">
-  <img src="app_icon.png" width="200" alt="VOIDLAN Logo">
-</p>
-
-<h1 align="center">VOIDLAN</h1>
-
-<p align="center">
-  Offline-first LAN companion app — discover devices, transfer files, and chat without the Internet.
-</p>
-
 An offline-first LAN companion app: discover devices on your local
 network, transfer files peer-to-peer, and chat — all without an
 Internet connection. Built with Flutter, Riverpod, GoRouter, and
@@ -17,6 +7,9 @@ Clean Architecture / MVVM. Primary targets are **Windows** and
 **Android**; **Linux** is supported as a secondary desktop target.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/OWNER/void_lan/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+
+_Replace `OWNER` in the badge URL above with your GitHub username/org once this is pushed to a repo — it can't resolve to a real workflow run from inside this sandbox._
 
 ## Platform support
 
@@ -34,7 +27,11 @@ _Not included — this project was generated in a sandbox with no
 Android/Windows emulator or display to capture real screenshots from.
 Once you've run the app locally, drop images here:_
 
-
+```markdown
+| LAN Explorer | Messenger | About |
+|---|---|---|
+| ![explorer](docs/screenshots/explorer.png) | ![messenger](docs/screenshots/messenger.png) | ![about](docs/screenshots/about.png) |
+```
 
 ## What's new
 
@@ -74,6 +71,36 @@ Explicitly deferred this round, and why — each needs either a dependency with 
 * **Voice messages** got pause/cancel and a real waveform: `VoiceRecorderService` exposes `pause()`/`resume()`/`amplitudeStream()`; `RecordingIndicator` renders the live input level while recording; `VoiceMessageContent` renders a seeded per-message waveform during playback with a progress sweep synced to `audioplayers`' position/duration streams.
 * **Entrance animations** (`flutter_animate`, actually wired up — previously declared but unused) on device tiles, conversation tiles, message bubbles, and About links.
 * Removed the unused `assets/` folder and `cupertino_icons` dependency — nothing in the app depends on bundled image assets or iOS-style icons.
+
+## Testing
+
+```bash
+flutter test
+```
+
+Covers pure-logic pieces with no native I/O, so they run the same in
+CI as on your machine:
+
+* `test/core/utils/network_utils_test.dart` — subnet math (`hostsInSubnet`): standard /24, small /30, oversized-range and malformed-mask fallback.
+* `test/data/services/tcp_framing_test.dart` — the length-prefixed framing protocol: round-trip, one-byte-at-a-time fragmentation, coalesced frames, and the oversized-frame rejection path.
+* `test/data/models/transfer_task_model_test.dart` — progress/ETA math.
+* `test/data/models/chat_message_model_test.dart` — the chat wire format's `toJson`/`fromJson`.
+* `test/widget/device_tile_test.dart` — `DeviceTile` renders the right name/IP/status and responds to taps.
+
+**Honestly out of scope for this pass:** integration tests that spin up
+two real sockets and talk to each other (`ConnectionManager`,
+`FileTransferService`, `PairingService`, `LanDiscoveryService`) —
+those need either a real loopback network in the test environment or
+a mocked `Socket`/`RawDatagramSocket` layer, and writing believable
+fakes for `dart:io` sockets without being able to run them against the
+real implementation risks tests that pass for the wrong reasons. The
+pure-logic layer above has real coverage instead of a hollow one.
+
+`.github/workflows/ci.yml` runs `flutter analyze` + `flutter test` on
+every push/PR, plus separate debug-build jobs for Android and Windows
+(the latter runs `flutter create --platforms=windows .` first, same as
+the local setup below, since only a placeholder lives in this repo's
+`windows/` folder).
 
 ## Getting the project running
 
